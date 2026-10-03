@@ -1,19 +1,34 @@
 # Design Decisions
 
-## Why a third consensus pattern was added on top of the previous suite's two
+## Why ImpactScorer was redesigned from a tolerance-band to a discrete bucket
 
-The previous suite on this account (Claim Corroboration Network) used two
-Equivalence Principle patterns — comparative and strict equality — and was
-accepted but scored relatively few points. Reviewers have historically
-rewarded genuine breadth of pattern coverage (the highest-scoring reference
-submission on this campaign used four distinct patterns across many
-contracts). `ImpactScorer`'s tolerance-band pattern is a third, genuinely
-different shape: instead of requiring exact agreement, it requires the
-validator to independently reach a similar conclusion within a declared
-margin. This is not a new invention for this account — it reuses the exact
-"soft mode" design already accepted in an earlier suite (EvidenceCorroboration's
-confidence-tolerance check), so it adds pattern diversity without adding
-unproven risk.
+The first version of this suite gave `ImpactScorer` a tolerance-band pattern:
+a continuous 0-100 score where a validator's independently-computed value
+was accepted if it fell within ±15 of the leader's. A reviewer rejected this
+specific design, for a precise reason: because the downstream approval
+threshold sits at exactly 50, two different in-tolerance values for the
+*same real contribution* could land on opposite sides of that threshold —
+e.g. a leader reporting 49 versus 51, both validated by the same honest
+tolerance window, but producing opposite APPROVED/REJECTED outcomes. A
+tolerance band is a legitimate pattern in general (it was used successfully
+in an earlier accepted suite on this account, for a value with no hard
+threshold riding on it), but it is the wrong tool whenever the accepted
+value itself crosses a decision boundary downstream. `ImpactScorer` was
+rewritten to require strict equality on one of five fixed levels
+(`10, 30, 50, 70, 90`) instead — removing the window entirely, so every
+accepted score produces one, fully determined downstream outcome.
+
+## Why ImpactScorer now fetches the pull request itself
+
+The same rejection also noted that the impact judgment was derived only
+from the caller-written `description` field, never from the actual pull
+request. This is the same class of issue as an much earlier rejection on
+this account (an LLM judging a claim of fact without the contract fetching
+the underlying material itself). `ImpactScorer` now calls
+`gl.nondet.web.render(pr_url)` and grounds its judgment in the fetched
+content — proven by a dedicated test that pairs a deliberately inflated
+description with a genuinely trivial real pull request and confirms the
+contract still returns the lowest impact bucket.
 
 ## Why no contract holds or transfers real funds
 
@@ -49,21 +64,20 @@ all match before combining their results.
 An earlier submission was rejected because a validator checked only that a
 leader's status label was one of the allowed values, without independently
 recomputing the count and set of fields that produced it. Every validator in
-this suite — across all three consensus patterns — independently re-fetches
-the PR (or re-derives the judgment) from scratch and only accepts the
-leader's result if its own independent computation agrees, either exactly
-(CodeQualityAssessor, ReviewerConsensusBoard) or within a declared tolerance
-(ImpactScorer). Nothing is accepted on the strength of a label alone.
+this suite — across both consensus patterns now in use — independently
+re-fetches the PR and re-derives the judgment from scratch, and only accepts
+the leader's result if its own independent computation matches it exactly.
+Nothing is accepted on the strength of a label alone, and nothing is
+accepted within a window of disagreement either, after the `ImpactScorer`
+rejection above.
 
 ## Why the LLM is never asked for open-ended free text as a load-bearing value
 
-`CodeQualityAssessor` only ever asks fixed yes/no questions. `ReviewerConsensusBoard`
-only ever asks for one word from a five-item fixed vocabulary. Only
-`ImpactScorer` asks for a number, and specifically because that value is
-inherently a magnitude judgment, it uses the tolerance-band pattern instead of
-requiring exact agreement. This mirrors the lesson from an earlier project
-where a continuous, unconstrained score caused consensus to fail even in
-good-faith cases.
+`CodeQualityAssessor` only ever asks fixed yes/no questions.
+`ReviewerConsensusBoard` only ever asks for one word from a five-item fixed
+vocabulary. `ImpactScorer` asks for a number, but constrains the model to
+one of five fixed levels and requires exact agreement on it — the same
+discipline as the other two contracts, applied to a magnitude judgment.
 
 ## Why there is no `initialize_reputation` method
 
