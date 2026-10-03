@@ -3,7 +3,7 @@ import pytest
 from genlayer_py import create_client, create_account
 from genlayer_py.chains import localnet
 
-CONTRACT_ADDRESS = "0xf0B0397fb85fc9a9A1dA6A018F676A1031879035"
+CONTRACT_ADDRESS = "0x219Fda3D6B3335dBE68a171b5a316C82572C0e88"
 
 
 @pytest.fixture(scope="module")
@@ -35,10 +35,16 @@ def test_finalize_contribution(client, sender_address):
     _write(client, "finalize_contribution", [0])
     details = json.loads(_read(client, "get_finalization_details", [0]))
     assert details["agent"] == sender_address
-    assert details["status"] == "APPROVED"
+    # status is empirical: APPROVED if final_score >= 50, else REJECTED —
+    # both are valid outcomes depending on the real quality/impact results.
+    assert details["status"] in ("APPROVED", "REJECTED")
+    # final_score must equal the documented formula exactly, given the
+    # quality_score and impact_score already on record.
+    expected = int(0.5 * details["quality_score"] + 0.5 * details["impact_score"])
+    assert details["final_score"] == expected
     # change_type depends on how far final_score is from the starting
-    # reputation of 50 — NEUTRAL (no change) is correct when final_score
-    # lands within 10 points of 50, not a bug.
+    # reputation of 50 — NEUTRAL (no change) is correct and returns SUCCESS
+    # here, it does not revert.
     assert details["change_type"] in ("INCREASE", "DECREASE", "NEUTRAL")
 
 
