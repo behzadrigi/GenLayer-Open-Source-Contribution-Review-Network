@@ -3,7 +3,7 @@ import pytest
 from genlayer_py import create_client, create_account
 from genlayer_py.chains import localnet
 
-CONTRACT_ADDRESS = "0x540401Ed6b31dE2Bdeec897De8ab0f36b4c9ea90"
+CONTRACT_ADDRESS = "0xBE0Ef8d51a884782CcE53fCbD577A63c3DddAAD7"
 
 
 @pytest.fixture(scope="module")
