@@ -3,7 +3,7 @@ import pytest
 from genlayer_py import create_client, create_account
 from genlayer_py.chains import localnet
 
-CONTRACT_ADDRESS = "0xB2C5cd2Ce93506D6c6D591A368030e187AD63453"
+CONTRACT_ADDRESS = "0x0c9792f09f9bED0D5774988F82Fb99D5C6BE6B1c"
 
 ALLOWED_CATEGORIES = ("BUGFIX", "FEATURE", "DOCS", "REFACTOR", "OTHER")
 
