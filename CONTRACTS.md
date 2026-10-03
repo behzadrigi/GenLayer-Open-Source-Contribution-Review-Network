@@ -51,10 +51,10 @@ fixed yes/no questions (tests added, documented, follows style).
 ## 3. ImpactScorer
 
 **Pattern:** non-deterministic, Equivalence-Principle consensus,
-**custom tolerance-band** — deliberately different from CodeQualityAssessor's
-exact-match comparative pattern.
+**strict equality on a discrete bucket**.
 
-**Purpose:** estimates a 0-100 impact score for the contribution.
+**Purpose:** fetches the pull request live and estimates its impact as
+exactly one of five fixed levels: 10, 30, 50, 70, 90.
 
 **Public methods**
 - `score_impact(contribution_id) -> bool` — reads the contribution on-chain;
@@ -63,14 +63,21 @@ exact-match comparative pattern.
 - `list_scores() -> str`
 
 **Safety properties**
-- A continuous 0-100 magnitude judgment is not expected to be bit-for-bit
-  reproducible across independent LLM calls even in good faith, so requiring
-  exact equality here would fail consensus constantly for reasons unrelated
-  to correctness. Instead, the validator independently recomputes its own
-  score from scratch and accepts the leader's value only if it falls within a
-  fixed, pre-declared tolerance of ±15 points — a genuine independent check,
-  not a weaker one, since the validator still does the full computation
-  itself rather than trusting the leader's number outright.
+- An earlier version of this contract used a continuous 0-100 score with a
+  ±15 tolerance band between leader and validator. A reviewer correctly
+  rejected that design: because the approval threshold sits at exactly 50,
+  two different in-tolerance values for the *same real contribution* could
+  land on opposite sides of that threshold, so the same underlying quality
+  could validly produce either APPROVED or REJECTED depending on which
+  number a leader happened to report. This version removes that ambiguity
+  entirely — the score must be the exact same one of five fixed values
+  `{10, 30, 50, 70, 90}` across every independent validator, so the
+  downstream APPROVED/REJECTED outcome is fully determined by the accepted
+  score with no window of disagreement.
+- `estimate_impact` fetches the actual pull request content via
+  `gl.nondet.web.render(pr_url)` and grounds its judgment in that fetched
+  content, not in the caller-written `description` alone. (An earlier
+  version used only the description, which the same reviewer also flagged.)
 - `score_impact` cannot be called twice on the same contribution.
 - `agent` is read from `ContributionRegistry`'s record, never from the
   caller.
