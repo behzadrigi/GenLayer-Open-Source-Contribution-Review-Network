@@ -1,27 +1,30 @@
 # GenLayer Open-Source Contribution Review Network
 
-A 5-contract GenLayer Intelligent Contract suite that reviews open-source pull
-requests through independent on-chain consensus: code quality checks, impact
-scoring, and category classification, then updates the contributor's on-chain
-reputation. Every downstream contract reads authenticated on-chain state
-instead of trusting caller-supplied data.
+A 5-contract GenLayer Intelligent Contract suite that reviews open-source
+pull requests through independent on-chain consensus: code quality checks,
+impact scoring, and category classification, then updates the contributor's
+on-chain reputation. Every downstream contract reads authenticated on-chain
+state instead of trusting caller-supplied data.
 
 ## Why this exists
 
-Evaluating a code contribution genuinely requires judgment: does it add tests,
-is it documented, how significant is its impact, what kind of change is it.
-This suite has GenLayer's decentralized validators independently fetch the
-actual pull request and reach consensus on each of these questions, using
-three deliberately different Equivalence Principle patterns, rather than
-trusting a single reviewer's unverified claim.
+Evaluating a code contribution genuinely requires judgment: does it add
+tests, is it documented, how significant is its impact, what kind of change
+is it. This suite has GenLayer's decentralized validators independently
+fetch the actual pull request and reach consensus on each of these
+questions, rather than trusting a single reviewer's unverified claim.
 
-This design applies every lesson learned across four earlier GenLayer
-submissions on this account: identity bound to the real transaction sender, no
-caller-supplied JSON trusted anywhere in the chain, independent full
-recomputation in every non-deterministic contract, no double-application of a
-result, and no fund custody at all. See [DECISIONS.md](./DECISIONS.md) for the
-full rationale, including why a third consensus pattern (tolerance-band) was
-added here on top of the two used in this account's previous suite.
+This design applies every lesson learned across earlier GenLayer submissions
+on this account, including one directly applied to this suite after a
+rejection: identity bound to the real transaction sender, no caller-supplied
+JSON trusted anywhere in the chain, independent full recomputation in every
+non-deterministic contract, no double-application of a result, no fund
+custody at all, and — specific to this suite's `ImpactScorer` — every
+accepted non-deterministic score is restricted to a small fixed set of
+exact values (never a tolerance window), and that score is grounded in the
+contract's own fetch of the real pull request content, never the caller's
+description alone. See [DECISIONS.md](./DECISIONS.md) for the full
+rationale, including the rejection this suite was corrected against.
 
 ## Architecture
 
@@ -40,12 +43,12 @@ Caller
                              validators
   │
   ▼
-3. ImpactScorer               non-deterministic, CUSTOM TOLERANCE-BAND consensus
-                             — estimates a 0-100 impact score; a validator's
-                             independently-computed score is accepted if it
-                             falls within ±15 of the leader's, since a
-                             continuous magnitude judgment is not expected to
-                             be bit-for-bit reproducible
+3. ImpactScorer               non-deterministic, STRICT EQUALITY consensus on a
+                             discrete bucket — fetches the PR live and
+                             independently estimates impact as exactly one of
+                             10 / 30 / 50 / 70 / 90; validators must reach the
+                             identical value, so every accepted score produces
+                             the same downstream outcome every time
   │
   ▼
 4. ReviewerConsensusBoard     non-deterministic, STRICT EQUALITY consensus — a
@@ -70,15 +73,18 @@ caller.
 
 | Contract | Address |
 |---|---|
-| ContributionRegistry | `0x18D4d1E86eFBB0c6fE009c88fE9798975d13A9D3` |
-| CodeQualityAssessor | `0x540401Ed6b31dE2Bdeec897De8ab0f36b4c9ea90` |
-| ImpactScorer | `0x0714eAa835AC16911426f337a27DD7797d0904b5` |
-| ReviewerConsensusBoard | `0xB2C5cd2Ce93506D6c6D591A368030e187AD63453` |
-| ContributorReputation | `0xf0B0397fb85fc9a9A1dA6A018F676A1031879035` |
+| ContributionRegistry | `0xb7Ca5e4b50302db495b721c6488b785c8b102112` |
+| CodeQualityAssessor | `0xBE0Ef8d51a884782CcE53fCbD577A63c3DddAAD7` |
+| ImpactScorer | `0x9D2EfcdD7089ba974d65373Ba1084690fcAFe8a2` |
+| ReviewerConsensusBoard | `0x0c9792f09f9bED0D5774988F82Fb99D5C6BE6B1c` |
+| ContributorReputation | `0x219Fda3D6B3335dBE68a171b5a316C82572C0e88` |
 
 See [CONTRACTS.md](./CONTRACTS.md) for per-contract detail and safety
-properties, and [tests/](./tests) for integration tests against the addresses
-above.
+properties, and [tests/](./tests) for integration tests against the
+addresses above. All 27 integration tests passed on GenLayer Studio,
+including a dedicated test that deliberately pairs an inflated description
+with a genuinely trivial pull request to prove the impact score is grounded
+in the real PR content rather than the description.
 
 ## Repo structure
 
